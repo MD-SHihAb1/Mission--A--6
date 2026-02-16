@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwiftCart · pristine e‑commerce</title>
+  <!-- Tailwind + DaisyUI (light only) -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <!-- Font Awesome 6 (free) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    /* clean, light design – no dark surprises */
+    * { transition: background-color 0.15s, border-color 0.15s; }
+    .product-card {
+      transition: all 0.2s ease;
+      border: 1px solid #f0f0f0;
+      background: white;
+    }
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05), 0 5px 10px -5px rgba(0,0,0,0.02);
+      border-color: #d1d5db;
+    }
+    .product-img {
+      height: 180px;
+      object-fit: contain;
+      padding: 1rem;
+      background: #f9fafb;
+    }
+    /* subtle skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 0.5rem;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    /* toast container */
+    #toast-container {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      pointer-events: none;
+    }
+    .toast-message {
+      pointer-events: auto;
+      animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+      max-width: 24rem;
+      border-left: 4px solid #3b82f6;
+      background: white;
+      color: #1f2937;
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateX(10px); }
+    }
+    /* active nav link */
+    .nav-link.active {
+      font-weight: 700;
+      color: #2563eb;
+      text-decoration: underline 2px;
+      text-underline-offset: 6px;
+    }
+    /* active category pill */
+    .category-pill.active {
+      background-color: #2563eb;
+      color: white;
+      border-color: #1d4ed8;
+      box-shadow: 0 2px 8px -2px rgba(37,99,235,0.2);
+    }
+    /* star color */
+    .star-filled { color: #f5b301; }
+    /* hero overlay – soft, not dark */
+    .hero-overlay {
+      background: linear-gradient(105deg, rgba(0,0,0,0.2), rgba(0,0,0,0.4));
+    }
+    /* no dark boxes anywhere */
+    body { background-color: #f9fafb; }
+    .card, .modal-box, .navbar, .footer { background-color: white; }
+    .btn-outline { background: transparent; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col min-h-screen">
+
+  <!-- toast container -->
+  <div id="toast-container"></div>
+
+  <!-- ========== NAVBAR (clean, no dark patches) ========== -->
+  <div class="navbar bg-white shadow-sm sticky top-0 z-30 px-4 md:px-8 border-b border-gray-200">
+    <div class="navbar-start">
+      <a class="text-2xl font-bold text-primary">SwiftCart</a>
+    </div>
+    <div class="navbar-center hidden lg:flex">
+      <ul class="menu menu-horizontal px-1 gap-2 text-base font-medium">
+        <li><a id="nav-home" class="nav-link active">Home</a></li>
+        <li><a id="nav-products" class="nav-link">Products</a></li>
+        <li><a id="nav-about" class="nav-link">About</a></li>
+        <li><a id="nav-contact" class="nav-link">Contact</a></li>
+      </ul>
+    </div>
+    <div class="navbar-end gap-2">
+      <!-- cart icon with count -->
+      <div class="indicator">
+        <span id="cart-count-badge" class="indicator-item badge badge-primary badge-sm">0</span>
+        <button class="btn btn-ghost btn-circle" onclick="window.cartModal.showModal()">
+          <i class="fas fa-shopping-cart text-xl"></i>
+        </button>
+      </div>
+      <!-- mobile menu -->
+      <div class="dropdown dropdown-end lg:hidden">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+          <i class="fas fa-bars text-xl"></i>
+        </div>
+        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+          <li><a class="nav-link-mobile">Home</a></li>
+          <li><a class="nav-link-mobile">Products</a></li>
+          <li><a class="nav-link-mobile">About</a></li>
+          <li><a class="nav-link-mobile">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="flex-grow container mx-auto px-4 md:px-6 lg:px-8 max-w-7xl w-full py-6">
+    
+ <!-- HOME VIEW -->
+<section id="home-view" class="block">
+
+  <!-- Hero Section -->
+  <div class="relative h-[550px] w-full overflow-hidden">
+
+    <!-- Background Image -->
+    <div class="absolute inset-0 bg-cover bg-center"
+         style="background-image: url('banner-image.png');">
+    </div>
+
+    <!-- Left Dark Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
+
+    <!-- Hero Content -->
+    <div class="relative z-10 h-full flex items-center">
+      <div class="max-w-2xl px-10 md:px-20 text-white">
+
+        <h1 class="text-4xl md:text-6xl font-bold leading-tight">
+          Best Collection For You
+        </h1>
+
+        <p class="mt-4 text-lg text-white/90">
+          Discover the latest trends in fashion, electronics, and more. 
+          Shop with confidence and style at SwiftCart.
+        </p>
+
+        <button id="shop-now-btn"
+                class="mt-6 bg-indigo-600 hover:bg-indigo-700 
+                       text-white px-8 py-3 rounded-lg 
+                       font-semibold shadow-lg transition">
+          Shop Now
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Why Choose Us Section -->
+  <div class="bg-gray-100 py-16">
+
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold text-gray-800">
+        Why Choose Us
+      </h2>
+      <p class="text-gray-600 mt-2">
+        We provide the best shopping experience with top-notch services.
+      </p>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+
+      <!-- Card 1 -->
+      <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition text-center">
+        <div class="w-14 h-14 mx-auto mb-4 flex items-center justify-center 
+                    rounded-lg bg-indigo-100 text-indigo-600 text-2xl">
+          <i class="fas fa-truck"></i>
+        </div>
+        <h3 class="font-semibold text-lg">Fast Delivery</h3>
+        <p class="text-sm text-gray-500 mt-2">
+          Get your orders delivered to your doorstep quickly and efficiently.
+        </p>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition text-center">
+        <div class="w-14 h-14 mx-auto mb-4 flex items-center justify-center 
+                    rounded-lg bg-indigo-100 text-indigo-600 text-2xl">
+          <i class="fas fa-headset"></i>
+        </div>
+        <h3 class="font-semibold text-lg">24/7 Support</h3>
+        <p class="text-sm text-gray-500 mt-2">
+          Our support team is available around the clock to assist you.
+        </p>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition text-center">
+        <div class="w-14 h-14 mx-auto mb-4 flex items-center justify-center 
+                    rounded-lg bg-indigo-100 text-indigo-600 text-2xl">
+          <i class="fas fa-lock"></i>
+        </div>
+        <h3 class="font-semibold text-lg">Secure Payment</h3>
+        <p class="text-sm text-gray-500 mt-2">
+          Experience safe and secure transactions with our encrypted systems.
+        </p>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition text-center">
+        <div class="w-14 h-14 mx-auto mb-4 flex items-center justify-center 
+                    rounded-lg bg-indigo-100 text-indigo-600 text-2xl">
+          <i class="fas fa-undo-alt"></i>
+        </div>
+        <h3 class="font-semibold text-lg">Easy Returns</h3>
+        <p class="text-sm text-gray-500 mt-2">
+          Not satisfied? Return your products easily within 30 days.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- Trending Now -->
+  <div class="max-w-6xl mx-auto px-6 py-16">
+    <h2 class="text-2xl font-bold mb-6">Trending Now</h2>
+
+    <div id="trending-grid"
+         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    </div>
+  </div>
+
+</section>
+
+
+
+    <!-- PRODUCTS VIEW -->
+    <section id="products-view" class="hidden">
+      <div class="mb-8">
+        <h3 class="text-lg font-semibold mb-3 flex items-center gap-2"><span class="w-1.5 h-6 bg-primary rounded-full"></span>Filter by Category</h3>
+        <div id="category-buttons" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+    </section>
+
+    <!-- ABOUT VIEW -->
+    <section id="about-view" class="hidden">
+      <div class="card bg-white shadow-md p-8 max-w-2xl mx-auto border border-gray-100">
+        <h2 class="text-3xl font-bold text-primary">About SwiftCart</h2>
+        <p class="mt-4 text-gray-600 leading-relaxed">We are a demo store built with FakeStoreAPI. This project showcases how to integrate Tailwind CSS, DaisyUI, and vanilla JavaScript to create a modern e‑commerce experience. Our mission: deliver beautiful UI with real data and smooth interactions.</p>
+      </div>
+    </section>
+
+    <!-- CONTACT VIEW -->
+    <section id="contact-view" class="hidden">
+      <div class="card bg-white shadow-md p-8 max-w-2xl mx-auto border border-gray-100">
+        <h2 class="text-3xl font-bold text-primary">Contact</h2>
+        <p class="mt-4 text-gray-600">Email: support@swiftcart.demo</p>
+        <p class="text-gray-600">Phone: +1 (800) 555‑0199</p>
+        <p class="text-gray-600 mt-4">We'd love to hear from you!</p>
+      </div>
+    </section>
+  </main>
+
+
+<!-- ========== FOOTER (pure black, white text) ========== -->
+<footer class="bg-black text-white py-12">
+  <div class="container mx-auto max-w-7xl px-4">
+    <!-- Grid layout: 1 column on mobile, 2 on sm, 4 on lg -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      
+      <!-- Brand column -->
+      <div>
+        <span class="footer-title text-lg text-white font-bold">SwiftCart</span>
+        <p class="text-sm text-white mt-3 leading-relaxed">
+          Your one‑stop shop for all your fashion and lifestyle needs. Quality products, fast delivery, and excellent support.
+        </p>
+      </div>
+      
+      <!-- Quick links -->
+      <div>
+        <span class="footer-title text-lg text-white font-bold">QUICK LINKS</span>
+        <ul class="mt-3 space-y-2">
+          <li><a href="#" class="link link-hover text-white hover:text-gray-300">Home</a></li>
+          <li><a href="#" class="link link-hover text-white hover:text-gray-300">Products</a></li>
+          <li><a href="#" class="link link-hover text-white hover:text-gray-300">About</a></li>
+          <li><a href="#" class="link link-hover text-white hover:text-gray-300">Contact</a></li>
+        </ul>
+      </div>
+      
+      <!-- Support links -->
+      <div>
+        <span class="footer-title text-lg text-white font-bold">SUPPORT</span>
+        <ul class="mt-3 space-y-2">
+          <li><a href="#" class="link link-hover text-white hover:text-gray-300">FAQ</a></li>
+          <li><a href="#" class="link link-hover text-white hover:text-gray-300">Shipping</a></li>
+          <li><a href="#" class="link link-hover text-white hover:text-gray-300">Returns</a></li>
+          <li><a href="#" class="link link-hover text-white hover:text-gray-300">Privacy Policy</a></li>
+        </ul>
+      </div>
+      
+      <!-- Newsletter -->
+      <div>
+        <span class="footer-title text-lg text-white font-bold">SUBSCRIBE TO OUR NEWSLETTER</span>
+        <p class="text-sm text-white mt-3 mb-4">
+          The latest news, articles, and resources, sent to your inbox weekly.
+        </p>
+        <div class="form-control w-full">
+          <div class="flex">
+            <input type="email" placeholder="Enter your email" class="input input-bordered rounded-r-none w-full bg-gray-900 text-white border-gray-700 placeholder:text-gray-400 focus:border-white" />
+            <button class="btn btn-primary rounded-l-none border-0" onclick="alert('Thanks for subscribing! (demo)')">Subscribe</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Optional copyright line (can be removed if not needed) -->
+    <div class="text-center text-sm text-gray-400 mt-12 pt-4 border-t border-gray-800">
+      © 2025 SwiftCart, Inc. All rights reserved.
+    </div>
+  </div>
+</footer>
+
+  <!-- ========== MODAL: Product Details ========== -->
+  <dialog id="productModal" class="modal">
+    <div class="modal-box w-11/12 max-w-3xl p-0 overflow-hidden rounded-2xl bg-white">
+      <div class="flex flex-col md:flex-row">
+        <div class="md:w-1/2 bg-gray-50 p-6 flex items-center justify-center">
+          <img id="modal-img" src="https://via.placeholder.com/400" class="max-h-64 object-contain" />
+        </div>
+        <div class="md:w-1/2 p-6">
+          <h3 id="modal-title" class="font-bold text-2xl pr-6 text-gray-800">title</h3>
+          <p id="modal-desc" class="py-3 text-gray-600 text-sm leading-relaxed"></p>
+          <div class="flex items-baseline gap-3 mt-2">
+            <span id="modal-price" class="text-3xl font-bold text-primary">$0.00</span>
+            <div id="modal-rating" class="flex items-center gap-1 text-sm text-gray-500"></div>
+          </div>
+          <p id="modal-category" class="badge badge-outline mt-4 px-3 py-2"></p>
+          <div class="modal-action flex justify-between items-center mt-6">
+            <button id="modal-add-to-cart" class="btn btn-primary"><i class="fas fa-shopping-cart mr-2"></i>Add to Cart</button>
+            <form method="dialog">
+              <button class="btn btn-ghost">Close</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <!-- ========== MODAL: Shopping Cart ========== -->
+  <dialog id="cartModal" class="modal">
+    <div class="modal-box w-11/12 max-w-2xl bg-white">
+      <h3 class="font-bold text-2xl mb-4 flex items-center gap-2 text-gray-800"><i class="fas fa-shopping-cart text-primary"></i> Your Cart <span id="cart-count-inline" class="badge badge-primary ml-2"></span></h3>
+      <div id="cart-items-container" class="space-y-3 max-h-96 overflow-auto pr-2"></div>
+      <div class="divider"></div>
+      <div class="flex justify-between font-bold text-xl">
+        <span>Total:</span>
+        <span id="cart-total" class="text-primary">$0.00</span>
+      </div>
+      <div class="modal-action flex justify-between">
+        <button class="btn btn-outline btn-error" onclick="clearCart()"><i class="fas fa-trash-alt mr-2"></i>Clear Cart</button>
+        <form method="dialog">
+          <button class="btn btn-primary">Close</button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <script>
+    (function() {
+      // ---------- state ----------
+      let allProducts = [];
+      let categories = [];
+      let cart = JSON.parse(localStorage.getItem('swiftcart_cart')) || [];
+      let currentCategory = 'all';
+      let currentProductForModal = null;
+
+      // DOM elements
+      const homeView = document.getElementById('home-view');
+      const productsView = document.getElementById('products-view');
+      const aboutView = document.getElementById('about-view');
+      const contactView = document.getElementById('contact-view');
+      const trendingGrid = document.getElementById('trending-grid');
+      const productsGrid = document.getElementById('products-grid');
+      const categoryButtonsDiv = document.getElementById('category-buttons');
+      const cartCountBadge = document.getElementById('cart-count-badge');
+      const cartItemsContainer = document.getElementById('cart-items-container');
+      const cartTotalSpan = document.getElementById('cart-total');
+      const toastContainer = document.getElementById('toast-container');
+
+      // modal elements
+      const productModal = document.getElementById('productModal');
+      const modalImg = document.getElementById('modal-img');
+      const modalTitle = document.getElementById('modal-title');
+      const modalDesc = document.getElementById('modal-desc');
+      const modalPrice = document.getElementById('modal-price');
+      const modalRating = document.getElementById('modal-rating');
+      const modalCategory = document.getElementById('modal-category');
+      const modalAddToCart = document.getElementById('modal-add-to-cart');
+
+      // ---------- toast ----------
+      window.showToast = (message, type = 'success') => {
+        const toast = document.createElement('div');
+        toast.className = `toast-message alert alert-${type} shadow-lg`;
+        toast.innerHTML = `<span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      };
+
+      // ---------- cart functions ----------
+      function updateCartUI() {
+        const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
+        cartCountBadge.textContent = totalItems;
+        document.getElementById('cart-count-inline').textContent = totalItems;
+        localStorage.setItem('swiftcart_cart', JSON.stringify(cart));
+        renderCartModal();
+      }
+
+      function renderCartModal() {
+        if (!cartItemsContainer) return;
+        if (cart.length === 0) {
+          cartItemsContainer.innerHTML = '<div class="text-center py-8 text-gray-400">Your cart is empty. Start shopping!</div>';
+          cartTotalSpan.textContent = '$0.00';
+          return;
+        }
+        let html = '';
+        let total = 0;
+        cart.forEach(item => {
+          const subtotal = item.price * item.quantity;
+          total += subtotal;
+          html += `
+            <div class="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+              <img src="${item.image}" class="w-16 h-16 object-contain bg-gray-50 rounded" />
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-sm truncate">${item.title}</p>
+                <p class="text-xs text-gray-500">$${item.price.toFixed(2)} x ${item.quantity}</p>
+                <p class="text-sm font-medium">$${subtotal.toFixed(2)}</p>
+              </div>
+              <div class="flex flex-col gap-1">
+                <button class="btn btn-xs btn-square btn-outline" onclick="adjustCartItem(${item.id}, 1)"><i class="fas fa-plus"></i></button>
+                <button class="btn btn-xs btn-square btn-outline" onclick="adjustCartItem(${item.id}, -1)"><i class="fas fa-minus"></i></button>
+                <button class="btn btn-xs btn-square btn-outline btn-error" onclick="removeFromCart(${item.id})"><i class="fas fa-trash"></i></button>
+              </div>
+            </div>
+          `;
+        });
+        cartItemsContainer.innerHTML = html;
+        cartTotalSpan.textContent = `$${total.toFixed(2)}`;
+      }
+
+      window.adjustCartItem = (id, delta) => {
+        const index = cart.findIndex(i => i.id === id);
+        if (index === -1) return;
+        const newQty = cart[index].quantity + delta;
+        if (newQty <= 0) {
+          cart.splice(index, 1);
+          showToast('🗑️ Item removed', 'info');
+        } else {
+          cart[index].quantity = newQty;
+          showToast('🔄 Quantity updated', 'success');
+        }
+        updateCartUI();
+      };
+
+      window.removeFromCart = (id) => {
+        cart = cart.filter(i => i.id !== id);
+        showToast('🗑️ Item removed', 'info');
+        updateCartUI();
+      };
+
+      window.clearCart = () => {
+        cart = [];
+        showToast('🧹 Cart cleared', 'warning');
+        updateCartUI();
+      };
+
+      function addToCart(product, quantity = 1) {
+        const existing = cart.find(i => i.id === product.id);
+        if (existing) {
+          existing.quantity += quantity;
+          showToast(`➕ Added another "${product.title.substring(0,20)}…"`, 'success');
+        } else {
+          cart.push({
+            id: product.id,
+            title: product.title,
+            price: product.price,
+            image: product.image,
+            quantity: quantity
+          });
+          showToast(`🛒 "${product.title.substring(0,25)}…" added to cart`, 'success');
+        }
+        updateCartUI();
+      }
+
+      // ---------- product card ----------
+      function createProductCard(product) {
+        const { id, title, price, image, category, rating } = product;
+        const card = document.createElement('div');
+        card.className = 'product-card card bg-white shadow-sm border border-gray-200 overflow-hidden';
+        card.innerHTML = `
+          <figure class="px-2 pt-2 bg-gray-50">
+            <img src="${image}" alt="${title}" class="product-img" loading="lazy" onerror="this.src='https://via.placeholder.com/200?text=SwiftCart'">
+          </figure>
+          <div class="card-body p-4">
+            <h4 class="card-title text-sm font-semibold min-h-[2.8rem] line-clamp-2">${title}</h4>
+            <p class="text-xl font-bold text-primary">$${price}</p>
+            <div class="badge badge-outline badge-sm">${category}</div>
+            <div class="flex items-center gap-1 text-sm">
+              <i class="fas fa-star star-filled"></i> <span>${rating?.rate?.toFixed(1) || '?'}</span> <span class="opacity-50">(${rating?.count || 0})</span>
+            </div>
+            <div class="card-actions justify-between items-center mt-3">
+              <button class="btn btn-xs btn-outline btn-primary detail-btn" data-id="${id}"><i class="fas fa-eye mr-1"></i>Details</button>
+              <button class="btn btn-xs btn-primary add-to-cart-btn" data-id="${id}"><i class="fas fa-shopping-cart mr-1"></i>Add</button>
+            </div>
+          </div>
+        `;
+
+        card.querySelector('.detail-btn').addEventListener('click', () => showModal(product));
+        card.querySelector('.add-to-cart-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          addToCart(product, 1);
+        });
+        return card;
+      }
+
+      function showModal(product) {
+        currentProductForModal = product;
+        modalImg.src = product.image;
+        modalTitle.textContent = product.title;
+        modalDesc.textContent = product.description || 'No description available.';
+        modalPrice.textContent = `$${product.price}`;
+        modalRating.innerHTML = `<i class="fas fa-star star-filled mr-1"></i> ${product.rating?.rate?.toFixed(1) || '?'} (${product.rating?.count || 0} reviews)`;
+        modalCategory.textContent = product.category;
+        productModal.showModal();
+      }
+
+      modalAddToCart.addEventListener('click', () => {
+        if (currentProductForModal) {
+          addToCart(currentProductForModal, 1);
+          productModal.close();
+        }
+      });
+
+      // ---------- render products ----------
+      function renderProducts(category = 'all') {
+        if (!productsGrid) return;
+        productsGrid.innerHTML = '';
+        const filtered = category === 'all' ? allProducts : allProducts.filter(p => p.category === category);
+        if (filtered.length === 0) {
+          productsGrid.innerHTML = '<div class="col-span-full text-center py-10 text-gray-400">No products found.</div>';
+          return;
+        }
+        filtered.forEach(p => productsGrid.appendChild(createProductCard(p)));
+      }
+
+      function renderCategoryButtons() {
+        categoryButtonsDiv.innerHTML = '';
+        const allBtn = document.createElement('button');
+        allBtn.className = `category-pill btn btn-sm ${currentCategory === 'all' ? 'active' : 'btn-outline btn-primary'}`;
+        allBtn.textContent = 'All';
+        allBtn.addEventListener('click', () => {
+          currentCategory = 'all';
+          renderCategoryButtons();
+          renderProducts('all');
+        });
+        categoryButtonsDiv.appendChild(allBtn);
+
+        categories.forEach(cat => {
+          const btn = document.createElement('button');
+          btn.className = `category-pill btn btn-sm ${currentCategory === cat ? 'active' : 'btn-outline btn-primary'}`;
+          btn.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+          btn.addEventListener('click', () => {
+            currentCategory = cat;
+            renderCategoryButtons();
+            renderProducts(cat);
+          });
+          categoryButtonsDiv.appendChild(btn);
+        });
+      }
+
+      // ---------- skeleton loader ----------
+      function showSkeleton(container, count = 8) {
+        container.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+          const skeletonCard = document.createElement('div');
+          skeletonCard.className = 'card bg-white shadow-sm border border-gray-100 p-3';
+          skeletonCard.innerHTML = `
+            <div class="skeleton w-full h-36 rounded-xl mb-2"></div>
+            <div class="skeleton h-4 w-3/4 mb-2"></div>
+            <div class="skeleton h-4 w-1/2 mb-2"></div>
+            <div class="skeleton h-6 w-1/3 mb-2"></div>
+            <div class="flex gap-2 mt-2">
+              <div class="skeleton h-8 w-16"></div>
+              <div class="skeleton h-8 w-16"></div>
+            </div>
+          `;
+          container.appendChild(skeletonCard);
+        }
+      }
+
+      // ---------- fetch data ----------
+      async function loadAll() {
+        showSkeleton(trendingGrid, 3);
+        showSkeleton(productsGrid, 8);
+
+        try {
+          const [productsRes, categoriesRes] = await Promise.all([
+            fetch('https://fakestoreapi.com/products'),
+            fetch('https://fakestoreapi.com/products/categories')
+          ]);
+          allProducts = await productsRes.json();
+          categories = await categoriesRes.json();
+
+          // trending (top 3 by rating)
+          const sorted = [...allProducts].sort((a,b) => (b.rating?.rate||0) - (a.rating?.rate||0));
+          const top3 = sorted.slice(0,3);
+          trendingGrid.innerHTML = '';
+          top3.forEach(p => trendingGrid.appendChild(createProductCard(p)));
+
+          renderProducts(currentCategory);
+          renderCategoryButtons();
+          updateCartUI();
+
+          showView('home-view');
+        } catch (err) {
+          showToast('❌ Failed to load products. Please refresh.', 'error');
+        }
+      }
+
+      // ---------- view router ----------
+      function showView(viewId) {
+        [homeView, productsView, aboutView, contactView].forEach(v => v.classList.add('hidden'));
+        document.getElementById(viewId).classList.remove('hidden');
+        document.querySelectorAll('.nav-link').forEach(link => {
+          const txt = link.textContent.trim().toLowerCase();
+          link.classList.remove('active');
+          if ((viewId === 'home-view' && txt === 'home') ||
+              (viewId === 'products-view' && txt === 'products') ||
+              (viewId === 'about-view' && txt === 'about') ||
+              (viewId === 'contact-view' && txt === 'contact')) {
+            link.classList.add('active');
+          }
+        });
+      }
+
+      // ---------- navigation ----------
+      document.querySelectorAll('.nav-link, .nav-link-mobile, .footer-link').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.preventDefault();
+          const txt = el.textContent.trim().toLowerCase();
+          if (el.classList.contains('footer-link')) {
+            const page = el.dataset.page;
+            if (page === 'home') showView('home-view');
+            else if (page === 'products') showView('products-view');
+            else if (page === 'about') showView('about-view');
+            else if (page === 'contact') showView('contact-view');
+          } else {
+            if (txt === 'home') showView('home-view');
+            else if (txt === 'products') showView('products-view');
+            else if (txt === 'about') showView('about-view');
+            else if (txt === 'contact') showView('contact-view');
+          }
+        });
+      });
+
+      document.getElementById('shop-now-btn').addEventListener('click', () => showView('products-view'));
+
+      window.cartModal = document.getElementById('cartModal');
+
+      // start
+      loadAll();
+    })();
+  </script>
+</body>
+</html>
